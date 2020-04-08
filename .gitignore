@@ -1,0 +1,6 @@
+*.vs*
+*.vscode*
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
