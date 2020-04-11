@@ -2,6 +2,9 @@
 #include <stdint.h>
 #include <xinput.h>
 #include <dsound.h>
+#include <math.h>
+
+#define Pi32 3.14159265359f
 
 typedef int8_t int8;
 typedef int16_t int16;
@@ -13,6 +16,9 @@ typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
 typedef uint64_t uint64;
+
+typedef float real32;
+typedef double real64;
 
 #define internal static
 #define local_persist static
@@ -59,7 +65,11 @@ global_variable x_input_set_state* XInputSetState_ = XInputSetStateStub;
 typedef DIRECTSOUNDCREATE(direct_sound_create);
 
 internal void Win32LoadXInput() {
-	HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll");
+	HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll");	
+	if (!XInputLibrary) { 
+		XInputLibrary = LoadLibraryA("xinput9_1_0.dll");
+	}
+
 	if (!XInputLibrary) { 
 		XInputLibrary = LoadLibraryA("xinput1_4.dll");
 	}
@@ -67,6 +77,8 @@ internal void Win32LoadXInput() {
 	if (XInputLibrary) {
 		XInputGetState = (x_input_get_state*)GetProcAddress(XInputLibrary, "XInputGetState");
 		XInputSetState = (x_input_set_state*)GetProcAddress(XInputLibrary, "XInputSetState");
+	} else {
+
 	}
 }
 
@@ -281,11 +293,59 @@ LRESULT CALLBACK MainWindowCallback(HWND Instance, UINT Message, WPARAM wParam, 
 	} break;
 
 	default: {
-		Result = DefWindowProc(Instance, Message, wParam, lParam);
+		Result = DefWindowProcA(Instance, Message, wParam, lParam);
 	} break;
 	}
 
 	return Result;
+}
+
+struct win32_sound_output {
+	int SamplesPerSecond;
+	int ToneHz;
+	int16 ToneVolume;
+	uint32 RunningSampleIndex;
+	int WavePeriod;
+	int HalfWavePeriod;
+	int BytesPerSample;
+	int SecondaryBufferSize;
+	real32 tSine;
+	int LatencySampleCount;
+};
+
+internal void Win32FillSoundBuffer(win32_sound_output* SoundOutput, DWORD ByteToLock, DWORD BytesToWrite) {
+	VOID* Region1;
+	DWORD Region1Size;
+	VOID* Region2;
+	DWORD Region2Size;
+
+	if (SUCCEEDED(GlobalSecondaryBuffer->Lock(ByteToLock, BytesToWrite, &Region1, &Region1Size, &Region2, &Region2Size, 0))) {
+		int16* SampleOut = (int16*)Region1;
+		DWORD Region1SampleCount = Region1Size / SoundOutput->BytesPerSample;
+		for (DWORD SampleIndex = 0; SampleIndex < Region1SampleCount; ++SampleIndex) {
+			real32 SineValue = sinf(SoundOutput->tSine);
+			int16 SampleValue = (int16)(SineValue * SoundOutput->ToneVolume);
+			*SampleOut++ = SampleValue;
+			*SampleOut++ = SampleValue;
+
+			SoundOutput->tSine += 2.8f*Pi32*1.0f/(real32)SoundOutput->WavePeriod;
+			++SoundOutput->RunningSampleIndex;
+		}
+
+		SampleOut = (int16*)Region2;
+		DWORD Region2SampleCount = Region2Size / SoundOutput->BytesPerSample;
+		for (DWORD SampleIndex = 0; SampleIndex < Region2SampleCount; ++SampleIndex) {
+			real32 SineValue = sinf(SoundOutput->tSine);
+			int16 SampleValue = (int16)(SineValue * SoundOutput->ToneVolume);
+			*SampleOut++ = SampleValue;
+			*SampleOut++ = SampleValue;
+			
+			SoundOutput->tSine += 2.8f*Pi32*1.0f/(real32)SoundOutput->WavePeriod;
+			++SoundOutput->RunningSampleIndex;
+		}
+
+		GlobalSecondaryBuffer->Unlock(Region1, Region1Size, Region2, Region2Size);
+	}
 }
 
 int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int nCmdShow) {
@@ -300,8 +360,8 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 	WindowClass.hInstance = Instance;
 	WindowClass.lpszClassName = "HandmadeHeroWindowClass";
 
-	if (RegisterClass(&WindowClass)) {
-		HWND Window = CreateWindowEx(0, 
+	if (RegisterClassA(&WindowClass)) {
+		HWND Window = CreateWindowExA(0, 
 			WindowClass.lpszClassName, 
 			"Handmade Hero x64", 
 			WS_OVERLAPPEDWINDOW | WS_VISIBLE, 
@@ -321,17 +381,19 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 			int XOffset = 0;
 			int YOffset = 0;
 
-			// note(jax): Sound test
-			int SamplesPerSecond = 40000;
-			int ToneHz = 440;
-			int16 ToneVolume = 500;
-			uint32 RunningSampleIndex = 0;
-			int SquareWavePeriod = SamplesPerSecond/ToneHz;
-			int HalfSquareWavePeriod = SquareWavePeriod / 2;
-			int BytesPerSample = sizeof(int16) * 2;
-			int SecondaryBufferSize = SamplesPerSecond * BytesPerSample;
-
-			Win32InitDSound(Window, SamplesPerSecond, SecondaryBufferSize);
+			win32_sound_output SoundOutput = {};
+			SoundOutput.SamplesPerSecond = 40000;
+			SoundOutput.ToneHz = 440;
+			SoundOutput.ToneVolume = 500;
+			SoundOutput.RunningSampleIndex = 0;
+			SoundOutput.WavePeriod = SoundOutput.SamplesPerSecond/SoundOutput.ToneHz;
+			SoundOutput.HalfWavePeriod = SoundOutput.WavePeriod / 2;
+			SoundOutput.BytesPerSample = sizeof(int16) * 2;
+			SoundOutput.SecondaryBufferSize = SoundOutput.SamplesPerSecond * SoundOutput.BytesPerSample;
+			SoundOutput.tSine = 0;
+			SoundOutput.LatencySampleCount = SoundOutput.SamplesPerSecond / 15;
+			Win32InitDSound(Window, SoundOutput.SamplesPerSecond, SoundOutput.SecondaryBufferSize);
+			Win32FillSoundBuffer(&SoundOutput, 0, SoundOutput.LatencySampleCount * SoundOutput.BytesPerSample);
 			GlobalSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
 			Running = true;
@@ -368,8 +430,15 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 						int16 StickLX = Pad->sThumbLX;
 						int16 StickLY = Pad->sThumbLY;
 
-						XOffset += StickLX >> 12;
-						YOffset -= StickLY >> 12;
+						// todo(jax): We will do deadzone handling later using
+						// XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE
+						// XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE 8689
+						
+						XOffset += StickLX / 4096;
+						YOffset -= StickLY / 4096;
+
+						SoundOutput.ToneHz = 512 + (int)(256.0f*((real32)StickLX / 30000.0f));
+						SoundOutput.WavePeriod = SoundOutput.SamplesPerSecond/SoundOutput.ToneHz;
 					} else {
 
 					}
@@ -382,50 +451,26 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 
 				RenderWeirdGradient(&GlobalBackbuffer, XOffset, YOffset);
 
-				// note(jax): sine based direct sound output test
+				// note(jax): DirectSound output test
 				DWORD PlayCursor;
 				DWORD WriteCursor;
 				if (SUCCEEDED(GlobalSecondaryBuffer->GetCurrentPosition(&PlayCursor, &WriteCursor))) {
-					DWORD ByteToLock = RunningSampleIndex * BytesPerSample % SecondaryBufferSize;
-					DWORD BytesToWrite;
+					DWORD ByteToLock = ((SoundOutput.RunningSampleIndex * SoundOutput.BytesPerSample) % SoundOutput.SecondaryBufferSize);
+					
+					DWORD TargetCursor = (PlayCursor + (SoundOutput.LatencySampleCount*SoundOutput.BytesPerSample));
+					DWORD BytesToWrite = 0;
 					if (ByteToLock > PlayCursor) {
-						BytesToWrite = (SecondaryBufferSize - ByteToLock);
-						BytesToWrite += PlayCursor;
+						BytesToWrite = (SoundOutput.SecondaryBufferSize - ByteToLock);
+						BytesToWrite += TargetCursor;
+					} else {
+						BytesToWrite = TargetCursor - ByteToLock;
 					}
-					else {
-						BytesToWrite = PlayCursor - ByteToLock;
-					}
 
-					VOID* Region1;
-					DWORD Region1Size;
-					VOID* Region2;
-					DWORD Region2Size;
-
-					if (SUCCEEDED(GlobalSecondaryBuffer->Lock(ByteToLock, BytesToWrite, &Region1, &Region1Size, &Region2, &Region2Size, 0))) {
-						int16* SampleOut = (int16*)Region1;
-						DWORD Region1SampleCount = Region1Size / BytesPerSample;
-						for (DWORD SampleIndex = 0; SampleIndex < Region1SampleCount; ++SampleIndex) {
-							int16 SampleValue = ((RunningSampleIndex++ / HalfSquareWavePeriod) % 2) ? ToneVolume : -ToneVolume;
-							*SampleOut++ = SampleValue;
-							*SampleOut++ = SampleValue;
-						}
-
-						SampleOut = (int16*)Region2;
-						DWORD Region2SampleCount = Region2Size / BytesPerSample;
-						for (DWORD SampleIndex = 0; SampleIndex < Region2SampleCount; ++SampleIndex) {
-							int16 SampleValue = ((RunningSampleIndex++ / HalfSquareWavePeriod) % 2) ? ToneVolume : -ToneVolume;
-							*SampleOut++ = SampleValue;
-							*SampleOut++ = SampleValue;
-						}
-
-						GlobalSecondaryBuffer->Unlock(Region1, Region1Size, Region2, Region2Size);
-					}
+					Win32FillSoundBuffer(&SoundOutput, ByteToLock, BytesToWrite);
 				}
 
 				win32_window_dimension Dimension = GetWindowDimension(Window);
 				Win32DisplayBufferInWindow(&GlobalBackbuffer, DeviceContext, Dimension.Width, Dimension.Height);
-
-				++XOffset;
 			}
 
 
