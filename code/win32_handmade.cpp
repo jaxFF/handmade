@@ -3,6 +3,7 @@
 #include <xinput.h>
 #include <dsound.h>
 #include <math.h>
+#include <stdio.h> // for sprintf
 
 #define Pi32 3.14159265359f
 
@@ -349,6 +350,10 @@ internal void Win32FillSoundBuffer(win32_sound_output* SoundOutput, DWORD ByteTo
 }
 
 int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int nCmdShow) {
+	LARGE_INTEGER PerfFreq;
+	QueryPerformanceFrequency(&PerfFreq);
+	uint64 PerfCounterFrequency = PerfFreq.QuadPart;
+
 	Win32LoadXInput();
 
 	WNDCLASSA WindowClass = {};
@@ -395,6 +400,11 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 			Win32InitDSound(Window, SoundOutput.SamplesPerSecond, SoundOutput.SecondaryBufferSize);
 			Win32FillSoundBuffer(&SoundOutput, 0, SoundOutput.LatencySampleCount * SoundOutput.BytesPerSample);
 			GlobalSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
+
+			LARGE_INTEGER LastCounter;
+			QueryPerformanceCounter(&LastCounter);
+
+			int64 LastCycleCount = __rdtsc();
 
 			Running = true;
 			while (Running) {
@@ -471,8 +481,25 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 
 				win32_window_dimension Dimension = GetWindowDimension(Window);
 				Win32DisplayBufferInWindow(&GlobalBackbuffer, DeviceContext, Dimension.Width, Dimension.Height);
-			}
 
+				uint64 EndCycleCount = __rdtsc();
+
+				LARGE_INTEGER EndCounter;
+				QueryPerformanceCounter(&EndCounter);
+
+				uint64 CyclesElapsed = EndCycleCount - LastCycleCount;
+				int64 CounterElapsed = EndCounter.QuadPart - LastCounter.QuadPart;
+				real64 MSPerFrame = ((1000 * (real64)CounterElapsed) / (real64)PerfCounterFrequency);
+				int32 FPS = PerfCounterFrequency / CounterElapsed;
+				real64 MCPF = (real64)(CyclesElapsed / (1000 * 1000));
+
+				char Buffer[256];
+				sprintf(Buffer, "%.02fms, %dFPS, %.02fmc/frame\n", MSPerFrame, FPS, MCPF); // MSPerFrame, FPS, MegacyclesPerFrame
+				OutputDebugStringA(Buffer);
+
+				LastCounter = EndCounter;
+				LastCycleCount = EndCycleCount;
+			}
 
 			ReleaseDC(Window, DeviceContext);
 		} else {
