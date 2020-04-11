@@ -1,9 +1,36 @@
+/*
+	todo(jax): THIS IS NOT A FINAL PLATFORM LAYER!!!
+
+	- Saved game locations
+	- Getting a handle to our own executable files
+	- Asset loading path
+	- Threading (launch a thread)
+	- Raw Input (support multiple keyboards & finer mouse movements)
+	- Sleep / timeBeginPeriod
+	- ClipCursor() (multi-monitor support)
+	- Fullscreen support
+	- WM_SETCURSOR (control cursor visibility)
+	- QueryCancelAutoplay
+	- WM_ACTIVATEAPP (for when we are not the active app)
+	- Blit speed improvements (BitBlit)
+	- Hardware acceleration (OpenGL or Direct3D or BOTH???)
+	- GetKeyboardLayout (for French kbs, international WASD support)
+
+	Just a partial list of stuff!!!
+*/
+
 #include <windows.h>
 #include <stdint.h>
 #include <xinput.h>
 #include <dsound.h>
+
+// todo(jax): Implement sine ourselves
 #include <math.h>
 #include <stdio.h> // for sprintf
+
+#define internal static
+#define local_persist static
+#define global_variable static
 
 #define Pi32 3.14159265359f
 
@@ -21,9 +48,7 @@ typedef uint64_t uint64;
 typedef float real32;
 typedef double real64;
 
-#define internal static
-#define local_persist static
-#define global_variable static
+#include "handmade.cpp"
 
 struct win32_offscreen_buffer {
 	BITMAPINFO Info;
@@ -64,6 +89,10 @@ global_variable x_input_set_state* XInputSetState_ = XInputSetStateStub;
 
 #define DIRECTSOUNDCREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND* ppDS, LPUNKNOWN pUnkOuter);
 typedef DIRECTSOUNDCREATE(direct_sound_create);
+
+void* PlatformLoadFile(char* FileName) {
+	return 0;
+}
 
 internal void Win32LoadXInput() {
 	HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll");	
@@ -151,21 +180,6 @@ internal win32_window_dimension GetWindowDimension(HWND Window) {
 	Result.Height = ClientRect.bottom - ClientRect.top;
 
 	return Result;
-}
-
-internal void RenderWeirdGradient(win32_offscreen_buffer* Buffer, int BlueOffset, int GreenOffset) {
-	uint8* Row = (uint8*)Buffer->Memory;
-	for (int Y = 0; Y < Buffer->Height; ++Y) {
-		uint32* Pixel = (uint32*)Row;
-		for (int X = 0; X < Buffer->Width; ++X) {
-			uint8 Blue = (X + BlueOffset);
-			uint8 Green = (Y + GreenOffset);
-
-			*Pixel++ = ((Green << 8 ) | Blue);
-		}
-
-		Row += Buffer->Pitch;
-	}
 }
 
 // Resize or initalize a Device Independent Buffer
@@ -459,7 +473,12 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 				Vibration.wRightMotorSpeed = 60000;
 				XInputSetState(0, &Vibration);
 
-				RenderWeirdGradient(&GlobalBackbuffer, XOffset, YOffset);
+				game_offscreen_buffer Buffer = {};
+				Buffer.Memory = GlobalBackbuffer.Memory;
+				Buffer.Width = GlobalBackbuffer.Width;
+				Buffer.Height = GlobalBackbuffer.Height;
+				Buffer.Pitch = GlobalBackbuffer.Pitch;
+				GameUpdateAndRender(&Buffer, XOffset, YOffset);
 
 				// note(jax): DirectSound output test
 				DWORD PlayCursor;
@@ -467,9 +486,9 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 				if (SUCCEEDED(GlobalSecondaryBuffer->GetCurrentPosition(&PlayCursor, &WriteCursor))) {
 					DWORD ByteToLock = ((SoundOutput.RunningSampleIndex * SoundOutput.BytesPerSample) % SoundOutput.SecondaryBufferSize);
 					
-					DWORD TargetCursor = (PlayCursor + (SoundOutput.LatencySampleCount*SoundOutput.BytesPerSample));
+					DWORD TargetCursor = ((PlayCursor + (SoundOutput.LatencySampleCount*SoundOutput.BytesPerSample)) % SoundOutput.SecondaryBufferSize);
 					DWORD BytesToWrite = 0;
-					if (ByteToLock > PlayCursor) {
+					if (ByteToLock > TargetCursor) {
 						BytesToWrite = (SoundOutput.SecondaryBufferSize - ByteToLock);
 						BytesToWrite += TargetCursor;
 					} else {
@@ -493,9 +512,11 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 				int32 FPS = PerfCounterFrequency / CounterElapsed;
 				real64 MCPF = (real64)(CyclesElapsed / (1000 * 1000));
 
-				char Buffer[256];
+#if 0
+			 	char Buffer[256];
 				sprintf(Buffer, "%.02fms, %dFPS, %.02fmc/frame\n", MSPerFrame, FPS, MCPF); // MSPerFrame, FPS, MegacyclesPerFrame
 				OutputDebugStringA(Buffer);
+#endif
 
 				LastCounter = EndCounter;
 				LastCycleCount = EndCycleCount;
