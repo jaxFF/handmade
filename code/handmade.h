@@ -15,7 +15,13 @@ struct game_offscreen_buffer {
 	int BytesPerPixel = 4;
 };
 
-void GameUpdateAndRender(game_offscreen_buffer* Buffer, int BlueOffset, int GreenOffset);
+struct game_sound_output_buffer {
+	int SamplesPerSecond;
+	int SampleCount;
+	int16* SampleOut;
+};
+
+void GameUpdateAndRender(game_offscreen_buffer* Buffer, int BlueOffset, int GreenOffset, game_sound_output_buffer* SoundBuffer, int ToneHz);
 
 #define HANDMADE_H
 #endif
