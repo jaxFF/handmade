@@ -80,8 +80,67 @@ global_variable x_input_set_state* XInputSetState_ = XInputSetStateStub;
 #define DIRECTSOUNDCREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND* ppDS, LPUNKNOWN pUnkOuter);
 typedef DIRECTSOUNDCREATE(direct_sound_create);
 
-void* PlatformLoadFile(char* FileName) {
-	return 0;
+internal debug_read_file_result DEBUGPlatformReadEntireFile(char* Filename) {
+	debug_read_file_result Result = {};
+
+	HANDLE FileHandle = CreateFileA(Filename, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+	if (FileHandle != INVALID_HANDLE_VALUE) {
+		LARGE_INTEGER FileSize;
+		if (GetFileSizeEx(FileHandle, &FileSize)) {
+			// note(jax): Windows can't read files greater than 4GB via ReadFile. Since this
+			// is debug code, we can assure that we won't be reading files that large here.
+			// Assert(FileSize.QuadPart <= 0xFFFFFFFF);
+			uint32 FileSize32 = SafeTruncateUInt64(FileSize.QuadPart);
+			Result.Contents = VirtualAlloc(0, FileSize32, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+			if (Result.Contents) {
+				DWORD BytesRead;
+				if (ReadFile(FileHandle, Result.Contents, FileSize32, &BytesRead, 0) && (FileSize32 == BytesRead)) {
+					// note(jax): File read successfully
+					Result.ContentsSize = FileSize32;
+				} else { // note(jax): Allocation failure!!!
+					DEBUGPlatformFreeFileMemory(Result.Contents);
+					Result.Contents = 0;
+				}
+			} else {
+				// todo(jax): Logging
+			}
+		} else {
+			// todo(jax): Logging
+		}
+
+		CloseHandle(FileHandle);
+	} else {
+		// todo(jax): Logging
+	}
+
+	return Result;
+}
+
+internal void DEBUGPlatformFreeFileMemory(void* Memory) {
+	if (Memory) {
+		VirtualFree(Memory, 0, MEM_RELEASE);
+	}
+}
+
+internal bool32 DEBUGPlatformWriteEntireFile(char* Filename, uint32 MemorySize, void* Memory) {
+	bool32 Result = false;
+
+	HANDLE FileHandle = CreateFileA(Filename, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
+	if (FileHandle != INVALID_HANDLE_VALUE) {
+		DWORD BytesWritten;
+		if (WriteFile(FileHandle, Memory, MemorySize, &BytesWritten, 0)) {
+			// note(jax): File read successfully
+			Result = (BytesWritten == MemorySize);
+		} else { // note(jax): Allocation failure!!!
+
+		}
+
+		CloseHandle(FileHandle);
+	} else {
+		// todo(jax): Logging
+	}
+
+	return Result;
 }
 
 internal void Win32LoadXInput() {
@@ -266,7 +325,7 @@ LRESULT CALLBACK MainWindowCallback(HWND Instance, UINT Message, WPARAM wParam, 
 			}
 			else if (VKCode == VK_SPACE) {
 				if (IsDown) {
-					OutputDebugStringA("DOWN\n");
+					OutputDebugStringA("VK_SPACE: IsDown\n");
 				}
 			}
 		}

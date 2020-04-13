@@ -27,10 +27,31 @@
 #define Terabytes(Value) (Gigabytes((uint64)Value) * 1024LL)
 
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
-
 // todo(jax): swap, min, max ... macros???
 
-// todo(jax): Services that the platform layer provides to the game.
+inline uint32 SafeTruncateUInt64(uint64 Value) {
+	// todo(jax): Defines for min/max values UInt32Max
+	Assert(Value <= 0xFFFFFFFF);
+	uint32 Result = (uint32)Value;
+	return Result;
+}
+
+// note(jax): Services that the platform layer provides to the game.
+#if HANDMADE_INTERNAL
+/* important(jax):
+
+	These are NOT for doing anything in the shipped game - they are
+	blocking and the write doesn't protect against lost data!
+*/
+struct debug_read_file_result {
+	uint32 ContentsSize;
+	void* Contents;
+};
+
+internal debug_read_file_result DEBUGPlatformReadEntireFile(char* Filename);
+internal void DEBUGPlatformFreeFileMemory(void* Memory);
+internal bool32 DEBUGPlatformWriteEntireFile(char* Filename, uint32 MemorySize, void* Memory);
+#endif
 
 // note(jax): Services that the game provides to the platform layer.
 // (this may expand in the future -- sound on seperate thread, etc..)
