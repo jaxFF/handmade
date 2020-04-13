@@ -54,7 +54,7 @@ typedef double real64;
 
 #include "win32_handmade.h"
 
-global_variable bool Running;
+global_variable bool GlobalRunning;
 global_variable win32_offscreen_buffer GlobalBackbuffer;
 global_variable LPDIRECTSOUNDBUFFER GlobalSecondaryBuffer;
 
@@ -272,69 +272,22 @@ LRESULT CALLBACK MainWindowCallback(HWND Instance, UINT Message, WPARAM wParam, 
 
 	case WM_DESTROY: {
 		// todo(jax): Handle this as an error -- recreate window?? how about swapping renderers mid game?
-		Running = false;
+		GlobalRunning = false;
 	} break;
 
 	case WM_CLOSE: {
 		// todo(jax): Handle this with a message to user
-		Running = false;
+		GlobalRunning = false;
 	} break;
 
-
+#if 0
 	case WM_SYSKEYDOWN:
 	case WM_SYSKEYUP:
 	case WM_KEYDOWN:
 	case WM_KEYUP: {
-		uint32 VKCode = wParam;
-		bool WasDown = ((lParam & (1 << 30)) != 0);
-		bool IsDown = ((lParam & (1 << 31)) == 0);
-
-		if (WasDown != IsDown) {
-			if (VKCode == 'W') {
-
-			}
-			else if (VKCode == 'A') {
-
-			}
-			else if (VKCode == 'S') {
-
-			}
-			else if (VKCode == 'D') {
-
-			}
-			else if (VKCode == 'Q') {
-
-			}
-			else if (VKCode == 'E') {
-
-			}
-			else if (VKCode == VK_UP) {
-
-			}
-			else if (VKCode == VK_DOWN) {
-
-			}
-			else if (VKCode == VK_LEFT) {
-
-			}
-			else if (VKCode == VK_RIGHT) {
-
-			}
-			else if (VKCode == VK_ESCAPE) {
-
-			}
-			else if (VKCode == VK_SPACE) {
-				if (IsDown) {
-					OutputDebugStringA("VK_SPACE: IsDown\n");
-				}
-			}
-		}
-
-		bool32 AltKeyWasDown = (lParam & (1 << 29));
-		if ((VKCode == VK_F4) && AltKeyWasDown) {
-			Running = false;
-		}
+		Assert(!"Keyboard input came in through a non-dispatch message!");
 	} break;
+#endif
 
 	// todo(jax): RAW INPUT
 	case WM_INPUT: {
@@ -412,9 +365,14 @@ internal void Win32FillSoundBuffer(win32_sound_output* SoundOutput, DWORD ByteTo
 	}
 }
 
+internal void Win32ProcessKeyboardMessage(game_button_state* NewState, bool32 IsDown) {
+	NewState->EndedDown = IsDown;
+	++NewState->HalfTransitionCount;
+}
+
 internal void Win32ProcessXInputDigitalButton(DWORD XInputButtonState, game_button_state* OldState, DWORD ButtonBit, game_button_state* NewState) {
-	NewState->HalfTransitionCount = (OldState->EndedDown == !NewState->EndedDown) ? 1 : 0;
 	NewState->EndedDown = ((XInputButtonState & ButtonBit) == ButtonBit);
+	NewState->HalfTransitionCount = (OldState->EndedDown == !NewState->EndedDown) ? 1 : 0;
 }
 
 int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int nCmdShow) {
@@ -461,7 +419,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 			Win32ClearSoundBuffer(&SoundOutput);
 			GlobalSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
-			Running = true;
+			GlobalRunning = true;
 
 			int16* Samples = (int16*)VirtualAlloc(0, SoundOutput.SecondaryBufferSize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 
@@ -473,10 +431,11 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 			
 			game_memory GameMemory = {};
 			GameMemory.PermanentStorageSize = Megabytes(64);
-			GameMemory.TransientStorageSize = Gigabytes(4);
+			GameMemory.TransientStorageSize = Gigabytes(1);
 
+			// todo(jax): Handle various memory footprints (USING SYSTEM_METRICS)
 			uint64 TotalSize = GameMemory.PermanentStorageSize + GameMemory.TransientStorageSize;
-			GameMemory.PermanentStorage = VirtualAlloc(BaseAddress, TotalSize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+			GameMemory.PermanentStorage = VirtualAlloc(BaseAddress, (size_t)TotalSize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 			GameMemory.TransientStorage = ((uint8*)GameMemory.PermanentStorage + GameMemory.PermanentStorageSize);
 
 			if (Samples && GameMemory.PermanentStorage && GameMemory.TransientStorage) {
@@ -487,19 +446,84 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 				LARGE_INTEGER LastCounter;
 				QueryPerformanceCounter(&LastCounter);
 				int64 LastCycleCount = __rdtsc();
-				while (Running) {
-					game_input Input = {};
-
+				while (GlobalRunning) {
 					MSG Message;
+
+					// todo(jax): Zeroing macro
+					// todo(jax): We can't zero everything because the up/down state will
+					// be wrong!!!
+					game_controller_input* KeyboardController = &NewInput->Controllers[0];
+					game_controller_input ZeroController = {};
+					*KeyboardController = ZeroController;
+
 					while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE)) {
-						if (Message.message == WM_QUIT)
-							Running = false;
+						if (Message.message == WM_QUIT) {
+							GlobalRunning = false;
+						}
+
+						// todo(jax): Eventually we will want to map inputs!
+						switch (Message.message) {
+							case WM_SYSKEYDOWN:
+							case WM_SYSKEYUP:
+							case WM_KEYDOWN:
+							case WM_KEYUP: {
+								uint32 VKCode = (uint32)Message.wParam;
+								bool WasDown = ((Message.lParam & (1 << 30)) != 0);
+								bool IsDown = ((Message.lParam & (1 << 31)) == 0);
+
+								if (WasDown != IsDown) {
+									if (VKCode == 'W') {
+
+									}
+									else if (VKCode == 'A') {
+
+									}
+									else if (VKCode == 'S') {
+
+									}
+									else if (VKCode == 'D') {
+
+									}
+									else if (VKCode == 'Q') {
+										Win32ProcessKeyboardMessage(&KeyboardController->LeftShoulder, IsDown);
+									}
+									else if (VKCode == 'E') {
+										Win32ProcessKeyboardMessage(&KeyboardController->RightShoulder, IsDown);
+									}
+									else if (VKCode == VK_UP) {
+										Win32ProcessKeyboardMessage(&KeyboardController->Up, IsDown);
+									}
+									else if (VKCode == VK_DOWN) {
+										Win32ProcessKeyboardMessage(&KeyboardController->Down, IsDown);
+									}
+									else if (VKCode == VK_LEFT) {
+										Win32ProcessKeyboardMessage(&KeyboardController->Left, IsDown);
+									}
+									else if (VKCode == VK_RIGHT) {
+										Win32ProcessKeyboardMessage(&KeyboardController->Right, IsDown);
+									}
+									else if (VKCode == VK_ESCAPE) {
+										GlobalRunning = false;
+									}
+									else if (VKCode == VK_SPACE) {
+										if (IsDown) {
+											OutputDebugStringA("VK_SPACE: IsDown\n");
+										}
+									}
+								}
+
+								bool32 AltKeyWasDown = (Message.lParam & (1 << 29));
+								if ((VKCode == VK_F4) && AltKeyWasDown) {
+									GlobalRunning = false;
+								}
+							} break;
+						}
 
 						TranslateMessage(&Message);
 						DispatchMessageA(&Message);
 					}
 
-					int MaxControllerCount = XUSER_MAX_COUNT;
+					DWORD MaxControllerCount = XUSER_MAX_COUNT;
 					if (MaxControllerCount > ArrayCount(NewInput->Controllers)) {
 						MaxControllerCount = ArrayCount(NewInput->Controllers);
 					}
@@ -563,7 +587,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 					Vibration.wRightMotorSpeed = 60000;
 					XInputSetState(0, &Vibration);
 
-					DWORD ByteToLock;
+					DWORD ByteToLock = 0;
 					DWORD TargetCursor;
 					DWORD BytesToWrite = 0;
 					DWORD PlayCursor;
@@ -613,13 +637,13 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 					uint64 CyclesElapsed = EndCycleCount - LastCycleCount;
 					int64 CounterElapsed = EndCounter.QuadPart - LastCounter.QuadPart;
 					real64 MSPerFrame = ((1000 * (real64)CounterElapsed) / (real64)PerfCounterFrequency);
-					int32 FPS = PerfCounterFrequency / CounterElapsed;
+					real64 FPS = (real64)PerfCounterFrequency / (real64)CounterElapsed;
 					real64 MCPF = (real64)(CyclesElapsed / (1000 * 1000));
 
-	#if 0
-					char Buffer[256];
-					sprintf(Buffer, "%.02fms, %dFPS, %.02fmc/frame\n", MSPerFrame, FPS, MCPF); // MSPerFrame, FPS, MegacyclesPerFrame
-					OutputDebugStringA(Buffer);
+	#if 1
+					char CharBuffer[256];
+					sprintf(CharBuffer, "%.02fms, %.02fFPS, %.02fmc/frame\n", MSPerFrame, FPS, MCPF); // MSPerFrame, FPS, MegacyclesPerFrame
+					OutputDebugStringA(CharBuffer);
 	#endif
 
 					LastCounter = EndCounter;

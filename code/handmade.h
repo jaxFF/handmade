@@ -121,7 +121,7 @@ struct game_memory {
 	void* TransientStorage; // note(jax): REQUIRED to be cleared to zero at startup!!!
 };
 
-void GameUpdateAndRender(game_memory* Memory, game_input* Input, game_offscreen_buffer* Buffer, game_sound_output_buffer* SoundBuffer);
+internal void GameUpdateAndRender(game_memory* Memory, game_input* Input, game_offscreen_buffer* Buffer, game_sound_output_buffer* SoundBuffer);
 
 //
 //
