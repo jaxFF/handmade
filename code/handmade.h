@@ -1,5 +1,31 @@
 #ifndef HANDMADE_H
 
+/*
+	note(jax):
+
+	HANDMADE_INTERNAL:
+		0 - Build for public release
+		1 - Build for developer only
+
+	HANDMADE_SLOW:
+		0 - No slow code allowed
+		1 - Slow code permitted
+*/
+
+// note(jax): Platform-independent way to perform an assertion.
+// Flat out writes to zero memory to crash the program.
+#if HANDMADE_SLOW
+#define Assert(Expression) if (!(Expression)) { *(int*)0=0; }
+#else
+#define Assert(Expression)
+#endif
+
+// todo(jax): Should these always be 64-bit?
+#define Kilobytes(Value) (((uint64)Value) * 1024LL)
+#define Megabytes(Value) (Kilobytes((uint64)Value) * 1024LL)
+#define Gigabytes(Value) (Megabytes((uint64)Value) * 1024LL)
+#define Terabytes(Value) (Gigabytes((uint64)Value) * 1024LL)
+
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
 
 // todo(jax): swap, min, max ... macros???
@@ -11,8 +37,9 @@
 
 // FOUR THINGS - timings, controllor/kb input, bitmap buffer to use, sound buffer to use
 
+// todo(jax): In the future, rendering _specifically_ will become a three-tiered abstraction!!!
 struct game_offscreen_buffer {
-	void* Memory;
+	void* Memory; // note(jax): Pixels are always 32-bits wide, so Memory Order BB GG RR XX
 	int Width;
 	int Height;
 	int Pitch;
@@ -59,10 +86,31 @@ struct game_controller_input {
 };
 
 struct game_input {
+	// todo(jax): Insert clock values here?
+
 	game_controller_input Controllers[4];
 };
 
-void GameUpdateAndRender(game_input* Input, game_offscreen_buffer* Buffer, game_sound_output_buffer* SoundBuffer);
+struct game_memory {
+	bool32 IsInitalized;
+	uint64 PermanentStorageSize;
+	void* PermanentStorage; // note(jax): REQUIRED to be cleared to zero at startup!!!
+
+	uint64 TransientStorageSize;
+	void* TransientStorage; // note(jax): REQUIRED to be cleared to zero at startup!!!
+};
+
+void GameUpdateAndRender(game_memory* Memory, game_input* Input, game_offscreen_buffer* Buffer, game_sound_output_buffer* SoundBuffer);
+
+//
+//
+//
+
+struct game_state {
+	int ToneHz;
+	int GreenOffset;
+	int BlueOffset;
+};
 
 #define HANDMADE_H
 #endif
