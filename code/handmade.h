@@ -127,7 +127,13 @@ struct game_memory {
 	void* TransientStorage; // note(jax): REQUIRED to be cleared to zero at startup!!!
 };
 
-internal void GameUpdateAndRender(game_memory* Memory, game_input* Input, game_offscreen_buffer* Buffer, game_sound_output_buffer* SoundBuffer);
+internal void GameUpdateAndRender(game_memory* Memory, game_input* Input, game_offscreen_buffer* Buffer);
+
+// note(jax): At the moment, this needs to be a very fast function, it cannot be
+// more than a millisecond or so.
+// todo(jax): Reduce the pressure on the function's performance by measuring it
+// or asking about it, etc.
+internal void GameGetSoundSamples(game_memory* Memory, game_sound_output_buffer* SoundBuffer);
 
 //
 //

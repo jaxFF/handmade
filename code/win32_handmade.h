@@ -18,14 +18,23 @@ struct win32_sound_output {
 	int SamplesPerSecond;
 	uint32 RunningSampleIndex;
 	int BytesPerSample;
-	int SecondaryBufferSize;
+	DWORD SecondaryBufferSize;
+	DWORD SafetyBytes;
 	real32 tSine;
 	int LatencySampleCount;
+	// todo(jax): Should RunningSampleIndex be in bytes as well
+	// todo(jax): Math gets simpler if we add a "bytes per second" field?
 };
 
 struct win32_debug_time_marker {
-	DWORD PlayCursor;
-	DWORD WriteCursor;
+	DWORD OutputPlayCursor;
+	DWORD OutputWriteCursor;
+	DWORD OutputLocation;
+	DWORD OutputByteCount;
+
+	DWORD ExpectedFlipPlayCursor;
+	DWORD FlipPlayCursor;
+	DWORD FlipWriteCursor;
 };
 
 #define WIN32_HANDMADE_H
