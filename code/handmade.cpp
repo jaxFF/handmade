@@ -6,12 +6,9 @@ internal void GameOutputSound(game_state* GameState, game_sound_output_buffer* S
 	
 	int16* SampleOut = SoundBuffer->SampleOut;
 	for (int SampleIndex = 0; SampleIndex < SoundBuffer->SampleCount; ++SampleIndex) {
-#if 0
 		real32 SineValue = sinf(GameState->tSine);
 		int16 SampleValue = (int16)(SineValue * ToneVolume);
-#else
-		int16 SampleValue = 0;
-#endif
+
 		*SampleOut++ = SampleValue;
 		*SampleOut++ = SampleValue;
 
