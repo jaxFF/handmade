@@ -742,7 +742,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 
 	WNDCLASSA WindowClass = {};
 
-	Win32ResizeDIBSection(&GlobalBackbuffer, 1280, 720);
+	Win32ResizeDIBSection(&GlobalBackbuffer, 960, 540);
 
 	WindowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
 	WindowClass.lpfnWndProc = MainWindowCallback;
@@ -754,10 +754,10 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 			WindowClass.lpszClassName, 
 			"Handmade Hero x64", 
 			WS_OVERLAPPEDWINDOW | WS_VISIBLE, 
-			0, 
-			0, 
-			1280, 
-			720, 
+			CW_USEDEFAULT, 
+			CW_USEDEFAULT, 
+			CW_USEDEFAULT, 
+			CW_USEDEFAULT, 
 			0, 
 			0, 
 			Instance, 
@@ -816,6 +816,18 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 			GameMemory.DEBUGPlatformReadEntireFile = DEBUGPlatformReadEntireFile;
 			GameMemory.DEBUGPlatformWriteEntireFile = DEBUGPlatformWriteEntireFile;
 
+int i = 3;
+int j = i - 2 * i; //3
+switch(i - j) {
+
+case 1: j++;
+case 2: j--;
+case 0: j++; break;
+default: j = 0;
+
+}
+++j;
+
 			// todo(jax): Handle various memory footprints (USING SYSTEM_METRICS)
 			// todo(jax): Use MEM_LARGE_PAGES and call adjust token privileges when not on Windows XP?
 			Win32State.TotalSize = GameMemory.PermanentStorageSize + GameMemory.TransientStorageSize;
@@ -846,7 +858,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 				game_input Input[2] = {};
 				game_input* NewInput = &Input[0];
 				game_input* OldInput = &Input[1];
-				NewInput->SecondsToAdvanceOverUpdate = TargetSecondsPerFrame;
+				NewInput->dtForFrame = TargetSecondsPerFrame;
 
 				LARGE_INTEGER LastCounter = Win32GetWallClock();
 				LARGE_INTEGER FlipWallClock = Win32GetWallClock();
