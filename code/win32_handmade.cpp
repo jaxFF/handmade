@@ -822,18 +822,6 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 			GameMemory.DEBUGPlatformReadEntireFile = DEBUGPlatformReadEntireFile;
 			GameMemory.DEBUGPlatformWriteEntireFile = DEBUGPlatformWriteEntireFile;
 
-int i = 3;
-int j = i - 2 * i; //3
-switch(i - j) {
-
-case 1: j++;
-case 2: j--;
-case 0: j++; break;
-default: j = 0;
-
-}
-++j;
-
 			// todo(jax): Handle various memory footprints (USING SYSTEM_METRICS)
 			// todo(jax): Use MEM_LARGE_PAGES and call adjust token privileges when not on Windows XP?
 			Win32State.TotalSize = GameMemory.PermanentStorageSize + GameMemory.TransientStorageSize;
