@@ -183,17 +183,34 @@ typedef GAME_GET_SOUND_SAMPLES(game_get_sound_samples);
 //
 
 struct canonical_position {
+	/* TODO(jax):
+
+		Take the tile map x and y
+		and the tile x and y
+
+		and pack them into single 32-bit values for x and y
+		where there is some low bits for the tile index
+		and the high bits are the tile "page"
+
+		NOTE(jax): We can eliminate the need for floor!
+	*/
 	int32 TileMapX;
 	int32 TileMapY;
 
 	int32 TileX;
 	int32 TileY;
 
+	/* TODO(jax):
+
+		Convert these to a math-friendly, resolution independent representation of
+		world units relative to a tile
+	*/
 	// note(jax): This is a tile-relative X and Y
 	real32 X;
 	real32 Y;
 };
 
+// TODO(jax): Is this ever necessary?
 struct raw_position {
 	int32 TileMapX;
 	int32 TileMapY;
@@ -208,13 +225,14 @@ struct tile_map {
 };
 
 struct world {
+	real32 TileSizeInMeters;
+	int32 TileSizeInPixels;
+
 	int32 CountX; 
 	int32 CountY;
 
 	real32 UpperLeftX;
 	real32 UpperLeftY;
-	real32 TileWidth;
-	real32 TileHeight;
 
 	// todo(jax): Beginner's sparseness
 	int32 TileMapCountX; 
