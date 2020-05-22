@@ -69,13 +69,13 @@ internal void InitalizeArena(memory_arena* Arena, memory_index Size, uint8* Base
 }
 
 #define PushStruct(Arena, type) (type*)PushSize_(Arena, sizeof(type))
-#define PushArray(Arena, Count, type) (type*)PushSize_(Arena, Count*sizeof(type))
+#define PushArray(Arena, Count, type) (type*)PushSize_(Arena, (Count)*sizeof(type))
 void* PushSize_(memory_arena* Arena, memory_index Size) {
 	// todo(jax): IMPORTANT CLEAR TO ZERO OPTION!!!
 
 	Assert((Arena->Used + Size) <= Arena->Size);
 	void* Result = Arena->Base + Arena->Used;
-	Arena->Used += Arena->Size;
+	Arena->Used += Size;
 
 	return Result;
 }
@@ -105,8 +105,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender) {
 		TileMap->ChunkMask = (1 << TileMap->ChunkShift) - 1;
 		TileMap->ChunkDim = 256;
 
-		TileMap->TileChunkCountX = 2;
-		TileMap->TileChunkCountY = 2;
+		TileMap->TileChunkCountX = 4;
+		TileMap->TileChunkCountY = 4;
 		TileMap->TileChunks = PushArray(&GameState->WorldArena, TileMap->TileChunkCountX*TileMap->TileChunkCountY, tile_chunk);
 		for (uint32 X = 0; X < TileMap->TileChunkCountX; ++X) {
 			for (uint32 Y = 0; Y < TileMap->TileChunkCountY; ++Y) {
@@ -125,7 +125,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender) {
 				for (uint32 TileY = 0; TileY < TilesPerHeight; ++TileY) {
 					for (uint32 TileX = 0; TileX < TilesPerWidth; ++TileX) {
 						uint32 AbsTileX = ScreenX*TilesPerWidth + TileX;
-						uint32 AbsTileY = ScreenY*TilesPerHeight + TileY;
+						uint32 AbsTileY = ScreenY* TilesPerWidth + TileY;
 						SetTileValue(&GameState->WorldArena, World->TileMap, AbsTileX, AbsTileY, (TileX == TileY) && (TileY % 2) ? 1 : 0);
 					}
 				}
