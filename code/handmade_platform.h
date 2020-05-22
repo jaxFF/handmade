@@ -1,0 +1,4 @@
+#ifndef HANDMADE_PLATFORM_H
+#define HANDMADE_PLATFORM_H
+
+#endif

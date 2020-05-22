@@ -33,6 +33,8 @@ typedef uint16_t uint16;
 typedef uint32_t uint32;
 typedef uint64_t uint64;
 
+typedef size_t memory_index;
+
 typedef float real32;
 typedef double real64;
 
@@ -182,61 +184,23 @@ typedef GAME_GET_SOUND_SAMPLES(game_get_sound_samples);
 //
 //
 
-struct tile_chunk_position {
-	uint32 TileChunkX;
-	uint32 TileChunkY;
+#include "handmade_intrinsics.h"
+#include "handmade_tile.h"
 
-	uint32 RelTileX;
-	uint32 RelTileY;
-};
-
-struct world_position {
-	/* TODO(jax):
-
-		Take the tile map x and y
-		and the tile x and y
-
-		and pack them into single 32-bit values for x and y
-		where there is some low bits for the tile index
-		and the high bits are the tile "page"
-
-		NOTE(jax): We can eliminate the need for floor!
-	*/
-	uint32 AbsTileX;
-	uint32 AbsTileY;
-
-	/* TODO(jax):
-
-		Convert these to a math-friendly, resolution independent representation of
-		world units relative to a tile
-	*/
-	// note(jax): This is a tile-relative X and Y
-	real32 RelTileX;
-	real32 RelTileY;
-};
-
-struct tile_chunk {
-	uint32* Tiles;
+struct memory_arena {
+	memory_index Size;
+	uint8* Base;
+	memory_index Used;
 };
 
 struct world {
-	uint32 ChunkShift;
-	uint32 ChunkMask;
-	uint32 ChunkDim;
-
-	real32 TileSizeInMeters;
-	int32 TileSizeInPixels;
-	real32 MetersToPixels;
-
-	// todo(jax): Beginner's sparseness
-	int32 TileChunkCountX; 
-	int32 TileChunkCountY;
-
-	tile_chunk* TileChunks;
+	tile_map* TileMap;
 };
 
 struct game_state {
-	world_position PlayerP;
+	memory_arena WorldArena;
+	world* World;
+	tile_map_position PlayerP;
 };
 
 #define HANDMADE_H
