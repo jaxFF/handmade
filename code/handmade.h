@@ -182,7 +182,15 @@ typedef GAME_GET_SOUND_SAMPLES(game_get_sound_samples);
 //
 //
 
-struct canonical_position {
+struct tile_chunk_position {
+	uint32 TileChunkX;
+	uint32 TileChunkY;
+
+	uint32 RelTileX;
+	uint32 RelTileY;
+};
+
+struct world_position {
 	/* TODO(jax):
 
 		Take the tile map x and y
@@ -194,11 +202,8 @@ struct canonical_position {
 
 		NOTE(jax): We can eliminate the need for floor!
 	*/
-	int32 TileMapX;
-	int32 TileMapY;
-
-	int32 TileX;
-	int32 TileY;
+	uint32 AbsTileX;
+	uint32 AbsTileY;
 
 	/* TODO(jax):
 
@@ -206,34 +211,32 @@ struct canonical_position {
 		world units relative to a tile
 	*/
 	// note(jax): This is a tile-relative X and Y
-	real32 TileRelX;
-	real32 TileRelY;
+	real32 RelTileX;
+	real32 RelTileY;
 };
 
-struct tile_map {
+struct tile_chunk {
 	uint32* Tiles;
 };
 
 struct world {
+	uint32 ChunkShift;
+	uint32 ChunkMask;
+	uint32 ChunkDim;
+
 	real32 TileSizeInMeters;
 	int32 TileSizeInPixels;
 	real32 MetersToPixels;
 
-	int32 CountX; 
-	int32 CountY;
-
-	real32 UpperLeftX;
-	real32 UpperLeftY;
-
 	// todo(jax): Beginner's sparseness
-	int32 TileMapCountX; 
-	int32 TileMapCountY;
+	int32 TileChunkCountX; 
+	int32 TileChunkCountY;
 
-	tile_map* TileMaps;
+	tile_chunk* TileChunks;
 };
 
 struct game_state {
-	canonical_position PlayerP;
+	world_position PlayerP;
 };
 
 #define HANDMADE_H
