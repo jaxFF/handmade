@@ -206,18 +206,8 @@ struct canonical_position {
 		world units relative to a tile
 	*/
 	// note(jax): This is a tile-relative X and Y
-	real32 X;
-	real32 Y;
-};
-
-// TODO(jax): Is this ever necessary?
-struct raw_position {
-	int32 TileMapX;
-	int32 TileMapY;
-
-	// note(jax): Tile-map relative X and Y
-	real32 X;
-	real32 Y;
+	real32 TileRelX;
+	real32 TileRelY;
 };
 
 struct tile_map {
@@ -227,6 +217,7 @@ struct tile_map {
 struct world {
 	real32 TileSizeInMeters;
 	int32 TileSizeInPixels;
+	real32 MetersToPixels;
 
 	int32 CountX; 
 	int32 CountY;
@@ -242,12 +233,7 @@ struct world {
 };
 
 struct game_state {
-	// todo(jax): Player state should be canonical position
-	int32 PlayerTileMapX;
-	int32 PlayerTileMapY;
-
-	real32 PlayerX;
-	real32 PlayerY;
+	canonical_position PlayerP;
 };
 
 #define HANDMADE_H
