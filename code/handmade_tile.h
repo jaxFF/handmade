@@ -7,6 +7,7 @@ struct tile_map_position {
 	// index in the chunk.
 	uint32 AbsTileX;
 	uint32 AbsTileY;
+	uint32 AbsTileZ;
 
 	// TODO(jax): Should these be from the center of a tile?
 	// note(jax): Rename to offsetX and Y
@@ -17,6 +18,7 @@ struct tile_map_position {
 struct tile_chunk_position {
 	uint32 TileChunkX;
 	uint32 TileChunkY;
+	uint32 TileChunkZ;
 
 	uint32 RelTileX;
 	uint32 RelTileY;
@@ -32,12 +34,11 @@ struct tile_map {
 	uint32 ChunkDim;
 
 	real32 TileSizeInMeters;
-	int32 TileSizeInPixels;
-	real32 MetersToPixels;
 
-	// todo(jax): Beginner's sparseness
+	// todo(jax): Real sparseness
 	uint32 TileChunkCountX; 
 	uint32 TileChunkCountY;
+	uint32 TileChunkCountZ;
 
 	tile_chunk* TileChunks;
 };
