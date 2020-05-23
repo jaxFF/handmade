@@ -63,6 +63,34 @@ internal void DrawRectangle(game_offscreen_buffer* Buffer, real32 RealMinX, real
 	}
 }
 
+#pragma pack(push, 1)
+struct bitmap_header {
+	uint16 FileType;
+	uint32 FileSize;
+	uint16 Reserved1;
+	uint16 Reserved2;
+	uint32 BitmapOffset;
+	uint32 Size;
+	int32 Width;
+	int32 Height;
+	uint16 Planes;
+	uint16 BitsPerPixel;
+};
+#pragma pack(pop)
+
+internal uint32* DEBUGLoadBMP(thread_context* Thread, debug_platform_read_entire_file* DEBUGPlatformReadEntireFile, char* FileName) {
+	uint32* Result = 0;
+
+	debug_read_file_result ReadResult = DEBUGPlatformReadEntireFile(Thread, FileName);
+	if (ReadResult.ContentsSize != 0) {
+		bitmap_header* Header = (bitmap_header*)ReadResult.Contents;
+		uint32* Pixels = (uint32*)((uint8*)ReadResult.Contents + Header->BitmapOffset);
+		Result = Pixels;
+	}
+
+	return Result;
+}
+
 extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender) {
 	Assert(sizeof(game_state) <= Memory->PermanentStorageSize);
 
@@ -71,10 +99,12 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender) {
 
 	game_state* GameState = (game_state*)Memory->PermanentStorage;
 	if (!Memory->IsInitalized) {
+		GameState->PixelPointer = DEBUGLoadBMP(Thread, Memory->DEBUGPlatformReadEntireFile, "test/test_background.bmp");
+
 		GameState->PlayerP.AbsTileX = 1;
 		GameState->PlayerP.AbsTileY = 3;
-		GameState->PlayerP.RelTileX = 5.0f;
-		GameState->PlayerP.RelTileY = 5.0f;
+		GameState->PlayerP.OffsetX = 5.0f;
+		GameState->PlayerP.OffsetY = 5.0f;
 		InitalizeArena(&GameState->WorldArena, Memory->PermanentStorageSize - sizeof(game_state), (uint8*)Memory->PermanentStorage + sizeof(game_state));
 
 		GameState->World = PushStruct(&GameState->WorldArena, world);
@@ -112,14 +142,17 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender) {
 		for (uint32 ScreenIndex = 0; ScreenIndex < 100; ++ScreenIndex) {
 			// TODO(jax): Random number generator!
             Assert(RandomNumberIndex < ArrayCount(RandomNumberTable));
-			uint32 RandomChoice ;
+			
+			uint32 RandomChoice;
             if (DoorUp || DoorDown) {
                 RandomChoice = RandomNumberTable[RandomNumberIndex++] % 2;
             } else {
                 RandomChoice = RandomNumberTable[RandomNumberIndex++] % 3;
             }
 
+			bool32 CreatedZDoor = false;
             if (RandomChoice == 2) {
+				CreatedZDoor = true;
                 if (AbsTileZ == 0) {
                     DoorUp = true;
                 } else {
@@ -153,11 +186,13 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender) {
                         TileValue = 2;
                     }
 
-                    if ((TileX == 6) && (TileY == 6)) {
+                    if ((TileX == 10) && (TileY == 6)) {
                         if (DoorUp) {
                             TileValue = 3;
-                        } else {
-                            TileValue = 3;
+                        } 
+
+						if (DoorDown) {
+                            TileValue = 4;
                         }
                     }
 
@@ -167,13 +202,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender) {
 
             DoorLeft = DoorRight;
             DoorBottom = DoorTop;
-
-            if (DoorUp) {
-                DoorDown = true;
-                DoorUp = false;
-            } else if (DoorDown) {
-                DoorUp = true;
-                DoorDown = false;
+			
+			if (CreatedZDoor) {
+				DoorDown = !DoorDown;
+				DoorUp = !DoorUp;
             } else {
                 DoorUp = false;
                 DoorDown = false;
@@ -236,22 +268,31 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender) {
 
 			// TODO(jax): Diagonal will be faster! Fix once we have vectors :)
 			tile_map_position NewPlayerP = GameState->PlayerP;
-			NewPlayerP.RelTileX += Input->dtForFrame * dPlayerX;
-			NewPlayerP.RelTileY += Input->dtForFrame * dPlayerY;
+			NewPlayerP.OffsetX += Input->dtForFrame * dPlayerX;
+			NewPlayerP.OffsetY += Input->dtForFrame * dPlayerY;
 			NewPlayerP = RecanonicalizePosition(TileMap, NewPlayerP);
 			// TODO(jax): Delta function that auto-recanonicalizes
 			
 			tile_map_position PlayerLeft = NewPlayerP;
-			PlayerLeft.RelTileX -= 0.5f*PlayerWidth;
+			PlayerLeft.OffsetX -= 0.5f*PlayerWidth;
 			PlayerLeft = RecanonicalizePosition(TileMap, PlayerLeft);
 
 			tile_map_position PlayerRight = NewPlayerP;
-			PlayerRight.RelTileX += 0.5f*PlayerWidth;
+			PlayerRight.OffsetX += 0.5f*PlayerWidth;
 			PlayerRight = RecanonicalizePosition(TileMap, PlayerRight);
 
 			if (IsTileMapPointEmpty(TileMap, NewPlayerP) &&
 			IsTileMapPointEmpty(TileMap, PlayerLeft) &&
 			IsTileMapPointEmpty(TileMap, PlayerRight)) {
+				if (!AreOnSameTile(&GameState->PlayerP, &NewPlayerP)) {
+					uint32 NewTileValue = GetTileValue(TileMap, NewPlayerP);
+
+					if (NewTileValue == 3) {
+						++NewPlayerP.AbsTileZ;
+					} else if (NewTileValue == 4) {
+						--NewPlayerP.AbsTileZ;
+					}
+				}
 				GameState->PlayerP = NewPlayerP;
 			}
 		}
@@ -282,8 +323,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender) {
 					Gray = 0.0f;
 				}
 
-				real32 CenX = ScreenCenterX - MetersToPixels*GameState->PlayerP.RelTileX + ((real32)RelColumn)*TileSizeInPixels;
-				real32 CenY = ScreenCenterY + MetersToPixels*GameState->PlayerP.RelTileY - ((real32)RelRow)*TileSizeInPixels;
+				real32 CenX = ScreenCenterX - MetersToPixels*GameState->PlayerP.OffsetX + ((real32)RelColumn)*TileSizeInPixels;
+				real32 CenY = ScreenCenterY + MetersToPixels*GameState->PlayerP.OffsetY - ((real32)RelRow)*TileSizeInPixels;
 				real32 MinX = CenX - 0.5f*TileSizeInPixels;
 				real32 MinY = CenY - 0.5f*TileSizeInPixels;
 				real32 MaxX = CenX + 0.5f*TileSizeInPixels;
@@ -300,6 +341,16 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender) {
 	real32 PlayerLeft = ScreenCenterX - 0.5f*MetersToPixels*PlayerWidth;
 	real32 PlayerTop = ScreenCenterY - MetersToPixels*PlayerHeight;
 	DrawRectangle(Buffer, PlayerLeft, PlayerTop, PlayerLeft + MetersToPixels*PlayerWidth, PlayerTop + MetersToPixels*PlayerHeight, PlayerR, PlayerG, PlayerB);
+
+#if 0
+	uint32* Source = GameState->PixelPointer;
+	uint32* Dest = (uint32*)Buffer->Memory;
+	for (int32 Y = 0; Y < Buffer->Height; ++Y) {
+		for (int32 X = 0; X < Buffer->Width; ++X) {
+			*Dest++ = *Source++;
+		}
+	}
+#endif
 }
 
 extern "C" GAME_GET_SOUND_SAMPLES(GameGetSoundSamples) {

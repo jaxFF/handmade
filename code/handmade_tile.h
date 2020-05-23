@@ -10,9 +10,8 @@ struct tile_map_position {
 	uint32 AbsTileZ;
 
 	// TODO(jax): Should these be from the center of a tile?
-	// note(jax): Rename to offsetX and Y
-	real32 RelTileX;
-	real32 RelTileY;
+	real32 OffsetX;
+	real32 OffsetY;
 };
 
 struct tile_chunk_position {
@@ -25,6 +24,7 @@ struct tile_chunk_position {
 };
 
 struct tile_chunk {
+	// todo(jax): Real structure for a tile!
 	uint32* Tiles;
 };
 
@@ -35,7 +35,8 @@ struct tile_map {
 
 	real32 TileSizeInMeters;
 
-	// todo(jax): Real sparseness
+	// todo(jax): Real sparsenesss so anywhere in the world can be
+	// represented without the giant pointer array.
 	uint32 TileChunkCountX; 
 	uint32 TileChunkCountY;
 	uint32 TileChunkCountZ;
