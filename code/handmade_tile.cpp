@@ -79,9 +79,6 @@ internal bool32 IsTileMapPointEmpty(tile_map* TileMap, tile_map_position Pos) {
 internal void SetTileValue(memory_arena* Arena, tile_map* TileMap, uint32 AbsTileX, uint32 AbsTileY, uint32 AbsTileZ, uint32 TileValue) {
 	tile_chunk_position ChunkPos = GetChunkPositionFor(TileMap, AbsTileX, AbsTileY, AbsTileZ);
 	tile_chunk* TileChunk = GetTileChunk(TileMap, ChunkPos.TileChunkX, ChunkPos.TileChunkY, ChunkPos.TileChunkZ);
-    
-    // TODO(jax): On-demand tile chunk creation
-    Assert(TileChunk);
 
 	if (!TileChunk->Tiles) {
 		uint32 TileCount = TileMap->ChunkDim * TileMap->ChunkDim;
@@ -91,6 +88,7 @@ internal void SetTileValue(memory_arena* Arena, tile_map* TileMap, uint32 AbsTil
 			TileChunk->Tiles[TileIndex] = 1;
 		}
 	}
+	
     SetTileValue(TileMap, TileChunk, ChunkPos.RelTileX, ChunkPos.RelTileY, TileValue);
 }
 
@@ -122,8 +120,21 @@ inline tile_map_position RecanonicalizePosition(tile_map* TileMap, tile_map_posi
 	return Result;
 }
 
-
 internal bool32 AreOnSameTile(tile_map_position* A, tile_map_position* B) {
 	bool32 Result = ((A->AbsTileX == B->AbsTileX) && (A->AbsTileY == B->AbsTileY) && (A->AbsTileZ == B->AbsTileZ));
+	return Result;
+}
+
+inline tile_map_difference Subtract(tile_map* TileMap, tile_map_position* A, tile_map_position* B) {
+	tile_map_difference Result;
+
+	real32 dTileX = (real32)A->AbsTileX - (real32)B->AbsTileX;	
+	real32 dTileY = (real32)A->AbsTileY - (real32)B->AbsTileY;	
+	real32 dTileZ = (real32)A->AbsTileZ - (real32)B->AbsTileZ;
+
+	Result.dX = TileMap->TileSizeInMeters*dTileX+(A->OffsetX - B->OffsetX);
+	Result.dY = TileMap->TileSizeInMeters*dTileY+(A->OffsetY - B->OffsetY);
+	Result.dZ = TileMap->TileSizeInMeters*dTileZ;
+
 	return Result;
 }
