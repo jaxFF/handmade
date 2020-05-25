@@ -1,6 +1,18 @@
 #ifndef HANDMADE_PLATFORM_H
 #define HANDMADE_PLATFORM_H
 
+/*
+	note(jax):
+
+	HANDMADE_INTERNAL:
+		0 - Build for public release
+		1 - Build for developer only
+
+	HANDMADE_SLOW:
+		0 - No slow code allowed
+		1 - Slow code permitted
+*/
+
 #include <stdint.h>
 
 #if !defined(COMPILER_MSVC)

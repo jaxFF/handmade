@@ -16,13 +16,6 @@ internal void GameOutputSound(thread_context* Thread, game_state* GameState, gam
 #endif
 		*SampleOut++ = SampleValue;
 		*SampleOut++ = SampleValue;
-
-#if 0
-		GameState->tSine += 2.8f*Pi32*1.0f/(real32)WavePeriod;
-		if (GameState->tSine > 2.0f*Pi32) {
-			GameState->tSine -= 2.0f*Pi32;
-		}
-#endif
 	}
 }
 

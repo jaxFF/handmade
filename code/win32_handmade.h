@@ -20,7 +20,6 @@ struct win32_sound_output {
 	int BytesPerSample;
 	DWORD SecondaryBufferSize;
 	DWORD SafetyBytes;
-	real32 tSine;
 	int LatencySampleCount;
 	// todo(jax): Should RunningSampleIndex be in bytes as well
 	// todo(jax): Math gets simpler if we add a "bytes per second" field?
