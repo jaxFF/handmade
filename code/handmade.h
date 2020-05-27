@@ -5,6 +5,7 @@
 
 #include "handmade_platform.h"
 #include "handmade_intrinsic.h"
+#include "handmade_math.h"
 #include "handmade_tile.h"
 
 struct memory_arena {
