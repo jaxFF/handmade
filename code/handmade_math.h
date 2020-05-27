@@ -27,6 +27,15 @@ inline v2 operator*(real32 A, v2 B) {
     return Result;
 }
 
+inline v2 operator*(v2 A, real32 B) {
+    v2 Result;
+    
+    Result.X = A.X*B;
+    Result.Y = A.Y*B;
+
+    return Result;
+}
+
 inline v2 &v2::operator*=(real32 A) {
     *this = A * *this;
     return *this;
@@ -60,6 +69,12 @@ inline v2 operator-(v2 A, v2 B) {
 
     Result.X = A.X - B.X;
     Result.Y = A.Y - B.Y;
+
+    return Result;
+}
+
+inline real32 Square(real32 A) {
+    real32 Result = A*A;
 
     return Result;
 }
