@@ -76,6 +76,14 @@ internal bool32 IsTileMapPointEmpty(tile_map* TileMap, tile_map_position Pos) {
 	return Empty;
 }
 
+internal bool32 IsTileValueEmpty(uint32 TileValue) {
+	bool32 Empty = ((TileValue == 1) ||
+					(TileValue == 3) ||
+					(TileValue == 4));
+					
+	return Empty;
+}
+
 internal void SetTileValue(memory_arena* Arena, tile_map* TileMap, uint32 AbsTileX, uint32 AbsTileY, uint32 AbsTileZ, uint32 TileValue) {
 	tile_chunk_position ChunkPos = GetChunkPositionFor(TileMap, AbsTileX, AbsTileY, AbsTileZ);
 	tile_chunk* TileChunk = GetTileChunk(TileMap, ChunkPos.TileChunkX, ChunkPos.TileChunkY, ChunkPos.TileChunkZ);
