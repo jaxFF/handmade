@@ -1,12 +1,13 @@
 #ifndef HANDMADE_H
 
-// todo(jax): Implement sine ourselves
-#include <math.h>
-
 #include "handmade_platform.h"
-#include "handmade_intrinsic.h"
-#include "handmade_math.h"
-#include "handmade_tile.h"
+
+#define Minimum(A, B) ((A < B) ? (A) : (B))
+#define Maximum(A, B) ((A > B) ? (A) : (B))
+
+//
+//
+//
 
 struct memory_arena {
 	memory_index Size;
@@ -31,6 +32,10 @@ void* PushSize_(memory_arena* Arena, memory_index Size) {
 
 	return Result;
 }
+
+#include "handmade_math.h"
+#include "handmade_intrinsic.h"
+#include "handmade_tile.h"
 
 struct world {
 	tile_map* TileMap;

@@ -37,9 +37,9 @@ global_variable bool32 DEBUGGlobalShowCursor;
 global_variable WINDOWPLACEMENT GlobalWindowPosition = { sizeof(GlobalWindowPosition) };
 
 internal void ToggleFullscreen(HWND Window) {
-		// NOTE(jax): This follows Raymond Chen's prescription
-		// for fullscreen toggling, see:
-		// http://blogs.msdn.com/b/oldnewthing/archive/2010/04/12/9994016.aspx
+	// NOTE(jax): This follows Raymond Chen's prescription
+	// for fullscreen toggling, see:
+	// http://blogs.msdn.com/b/oldnewthing/archive/2010/04/12/9994016.aspx
 
 	DWORD Style = GetWindowLong(Window, GWL_STYLE);
 	if (Style & WS_OVERLAPPEDWINDOW) {
